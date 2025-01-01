@@ -1,0 +1,3 @@
+[submodule "evaluation/databases/ClickHouse/ClickHouse"]
+	path = evaluation/databases/ClickHouse/ClickHouse
+	url = https://github.com/ClickHouse/ClickHouse.git

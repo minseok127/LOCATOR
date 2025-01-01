@@ -1,0 +1,379 @@
+
+-- Q01
+SELECT 
+    ol_number, 
+    SUM(ol_quantity) AS sum_qty,
+    SUM(ol_amount) AS sum_amount,
+    AVG(ol_quantity) AS avg_qty,
+    AVG(ol_amount) AS avg_amount,
+    COUNT(*) AS count_order
+FROM 
+    order_line
+INNER JOIN stock 
+    ON ol_supply_w_id = s_w_id AND ol_i_id = s_i_id
+INNER JOIN supplier 
+    ON s_suppkey = su_suppkey
+INNER JOIN nation 
+    ON su_nationkey = n_nationkey
+WHERE 
+    n_name LIKE 'Canada%'
+    AND ol_delivery_d > '2015-01-02 00:00:00.000000'
+GROUP BY 
+    ol_number
+ORDER BY 
+    ol_number;
+////
+-- Q02
+SELECT 
+    su_suppkey, su_name, n_name, i_id, i_name, su_address, su_phone, su_comment
+FROM 
+    item
+INNER JOIN stock 
+    ON i_id = s_i_id
+INNER JOIN supplier 
+    ON s_suppkey = su_suppkey
+INNER JOIN nation 
+    ON su_nationkey = n_nationkey
+INNER JOIN (
+    SELECT 
+        s_i_id AS m_i_id,
+        MIN(s_quantity) AS m_s_quantity
+    FROM 
+        stock
+    INNER JOIN supplier 
+        ON s_suppkey = su_suppkey
+    INNER JOIN nation 
+        ON su_nationkey = n_nationkey
+    WHERE 
+        n_name LIKE 'Canada%'
+    GROUP BY 
+        s_i_id
+) AS m 
+    ON i_id = m.m_i_id 
+    AND s_quantity = m.m_s_quantity
+WHERE 
+    i_brand LIKE 'Brand#31%'
+    AND n_name LIKE 'Canada%'
+ORDER BY 
+    n_name, su_name, i_id;
+////
+/*+ SeqScan(order_line) */
+-- Q03
+SELECT 
+    ol_o_id, ol_w_id, ol_d_id, SUM(ol_amount) AS revenue, o_entry_d
+FROM 
+    customer
+INNER JOIN orders 
+    ON c_id = o_c_id AND c_w_id = o_w_id AND c_d_id = o_d_id
+INNER JOIN new_order 
+    ON no_w_id = o_w_id AND no_d_id = o_d_id AND no_o_id = o_id
+INNER JOIN order_line 
+    ON ol_w_id = o_w_id AND ol_d_id = o_d_id AND ol_o_id = o_id
+INNER JOIN nation 
+    ON c_nationkey = n_nationkey
+WHERE 
+    c_state LIKE 'S%'
+    AND n_name LIKE 'Canada%'
+GROUP BY 
+    ol_o_id, ol_w_id, ol_d_id, o_entry_d
+ORDER BY 
+    revenue DESC, o_entry_d;
+////
+/*+ SeqScan(order_line) */
+-- Q04
+SELECT 
+    o_ol_cnt, 
+    COUNT(DISTINCT (o_id::text || '-' || o_w_id::text || '-' || o_d_id::text)) AS order_count
+FROM orders
+JOIN customer 
+    ON c_id = o_c_id 
+   AND c_w_id = o_w_id 
+   AND c_d_id = o_d_id
+JOIN nation
+    ON c_nationkey = n_nationkey
+JOIN order_line
+    ON ol_o_id = o_id 
+   AND ol_w_id = o_w_id 
+   AND ol_d_id = o_d_id 
+   AND ol_delivery_d >= o_entry_d
+WHERE 
+    o_entry_d >= '2015-01-02 00:00:00' 
+    AND o_entry_d < '2025-01-02 00:00:00'
+    AND n_name LIKE 'Canada%'
+GROUP BY 
+    o_ol_cnt
+ORDER BY 
+    o_ol_cnt;
+////
+-- Q05
+SELECT
+    cust_nation.n_name, 
+    SUM(ol_amount) AS revenue
+FROM 
+    customer
+INNER JOIN orders 
+    ON c_id = o_c_id AND c_w_id = o_w_id AND c_d_id = o_d_id
+INNER JOIN order_line 
+    ON ol_o_id = o_id AND ol_w_id = o_w_id AND ol_d_id = o_d_id
+INNER JOIN stock 
+    ON ol_w_id = s_w_id AND ol_i_id = s_i_id
+INNER JOIN supplier 
+    ON s_suppkey = su_suppkey
+INNER JOIN nation AS cust_nation 
+    ON c_nationkey = cust_nation.n_nationkey
+INNER JOIN nation AS supp_nation 
+    ON su_nationkey = supp_nation.n_nationkey
+WHERE 
+    cust_nation.n_name LIKE 'Canada%'
+    AND supp_nation.n_name LIKE 'Canada%' 
+    AND o_entry_d >= '2015-01-02 00:00:00.000000'
+GROUP BY 
+    cust_nation.n_name
+ORDER BY 
+    revenue DESC;
+////
+-- Q06
+SELECT 
+   SUM(ol_amount) AS revenue
+FROM 
+   order_line
+INNER JOIN stock 
+   ON ol_supply_w_id = s_w_id AND ol_i_id = s_i_id
+INNER JOIN supplier 
+   ON s_suppkey = su_suppkey
+INNER JOIN nation 
+   ON su_nationkey = n_nationkey
+WHERE 
+   n_name LIKE 'Canada%'
+   AND ol_delivery_d >= '2015-01-02 00:00:00.000000'
+   AND ol_delivery_d < '2025-01-02 00:00:00.000000'
+   AND ol_quantity BETWEEN 1 AND 100000;
+////
+-- Q07
+SELECT 
+   n1.n_name AS supp_nation, n2.n_name AS cust_nation,
+   EXTRACT(year FROM o_entry_d) AS l_year, SUM(ol_amount) AS revenue
+FROM 
+   supplier
+INNER JOIN stock 
+   ON s_suppkey = su_suppkey
+INNER JOIN order_line 
+   ON ol_supply_w_id = s_w_id AND ol_i_id = s_i_id
+INNER JOIN orders 
+   ON ol_w_id = o_w_id AND ol_d_id = o_d_id AND ol_o_id = o_id
+INNER JOIN customer 
+   ON c_id = o_c_id AND c_w_id = o_w_id AND c_d_id = o_d_id
+INNER JOIN nation AS n1 
+   ON su_nationkey = n1.n_nationkey
+INNER JOIN nation AS n2 
+   ON c_nationkey = n2.n_nationkey
+WHERE 
+   (
+      (n1.n_name LIKE 'Germany%' AND n2.n_name LIKE 'Cambodia%')
+      OR
+      (n1.n_name LIKE 'Cambodia%' AND n2.n_name LIKE 'Germany%')
+   )
+   AND ol_delivery_d BETWEEN '2015-01-02 00:00:00.000000' AND '2025-01-02 00:00:00.000000'
+GROUP BY 
+   supp_nation, cust_nation, l_year
+ORDER BY 
+   supp_nation, cust_nation, l_year;
+////
+-- Q08
+SELECT 
+    EXTRACT(year FROM o_entry_d) AS l_year,
+    SUM(CASE WHEN n2.n_name LIKE 'Germany%' THEN ol_amount ELSE 0 END) / SUM(ol_amount) AS mkt_share
+FROM 
+    item
+INNER JOIN stock 
+    ON i_id = s_i_id
+INNER JOIN order_line 
+    ON ol_i_id = s_i_id AND ol_supply_w_id = s_w_id
+INNER JOIN supplier 
+    ON s_suppkey = su_suppkey
+INNER JOIN orders 
+    ON ol_w_id = o_w_id AND ol_d_id = o_d_id AND ol_o_id = o_id
+INNER JOIN customer 
+    ON c_id = o_c_id AND c_w_id = o_w_id AND c_d_id = o_d_id
+INNER JOIN nation AS n1 
+    ON n1.n_nationkey = c_nationkey
+INNER JOIN nation AS n2 
+    ON su_nationkey = n2.n_nationkey
+WHERE 
+    ol_i_id < 1000
+    AND n1.n_name LIKE 'Canada%'
+    AND i_brand LIKE 'Brand#21%'
+GROUP BY 
+    EXTRACT(year FROM o_entry_d)
+ORDER BY 
+    l_year;
+////
+-- Q09
+SELECT 
+    n_name, EXTRACT(year FROM o_entry_d) AS l_year, SUM(ol_amount) AS sum_profit
+FROM 
+    item
+INNER JOIN stock 
+    ON i_id = s_i_id
+INNER JOIN supplier 
+    ON s_suppkey = su_suppkey
+INNER JOIN order_line 
+    ON ol_i_id = s_i_id AND ol_supply_w_id = s_w_id
+INNER JOIN orders 
+    ON ol_w_id = o_w_id AND ol_d_id = o_d_id AND ol_o_id = o_id
+INNER JOIN nation 
+    ON su_nationkey = n_nationkey
+WHERE 
+    i_brand LIKE 'Brand#21%' 
+    AND n_name LIKE 'Botswana%'
+GROUP BY 
+    n_name, EXTRACT(year FROM o_entry_d)
+ORDER BY 
+    n_name, l_year DESC;
+////
+-- Q10
+SELECT 
+    c_id, c_last, SUM(ol_amount) AS revenue, c_city, c_phone, n_name
+FROM 
+    customer
+INNER JOIN orders 
+    ON c_id = o_c_id AND c_w_id = o_w_id AND c_d_id = o_d_id
+INNER JOIN order_line 
+    ON ol_w_id = o_w_id AND ol_d_id = o_d_id AND ol_o_id = o_id AND o_entry_d <= ol_delivery_d
+INNER JOIN nation 
+    ON n_nationkey = c_nationkey
+WHERE 
+    n_name LIKE 'Canada%'
+GROUP BY 
+    c_id, c_last, c_city, c_phone, n_name
+ORDER BY 
+    revenue DESC;
+////
+-- Q11
+SELECT 
+    s_i_id, 
+    SUM(s_order_cnt) AS ordercount
+FROM 
+    stock
+INNER JOIN supplier 
+    ON s_suppkey = su_suppkey
+INNER JOIN nation 
+    ON su_nationkey = n_nationkey
+WHERE 
+    n_name LIKE 'Germany%'
+GROUP BY 
+    s_i_id
+HAVING 
+    SUM(s_order_cnt) > (
+        SELECT 
+            SUM(s_order_cnt) * 0.005
+        FROM 
+            stock
+        INNER JOIN supplier 
+            ON s_suppkey = su_suppkey
+        INNER JOIN nation 
+            ON su_nationkey = n_nationkey
+        WHERE 
+            n_name LIKE 'Germany%'
+    )
+ORDER BY 
+    ordercount DESC;
+////
+-- Q12
+SELECT 
+    o_ol_cnt,
+    SUM(CASE WHEN o_carrier_id = 1 OR o_carrier_id = 2 THEN 1 ELSE 0 END) AS high_line_count,
+    SUM(CASE WHEN o_carrier_id <> 1 AND o_carrier_id <> 2 THEN 1 ELSE 0 END) AS low_line_count
+FROM 
+    orders
+INNER JOIN order_line 
+    ON ol_w_id = o_w_id AND ol_d_id = o_d_id AND ol_o_id = o_id
+INNER JOIN customer 
+    ON c_id = o_c_id AND c_w_id = o_w_id AND c_d_id = o_d_id
+INNER JOIN nation 
+    ON c_nationkey = n_nationkey
+WHERE 
+    n_name LIKE 'Canada%'
+    AND o_entry_d <= ol_delivery_d
+GROUP BY 
+    o_ol_cnt
+ORDER BY 
+    o_ol_cnt;
+////
+-- Q14
+SELECT 
+    100.00 * SUM(CASE WHEN i_data LIKE 'PR%' THEN ol_amount ELSE 0 END) / (1 + SUM(ol_amount)) AS promo_revenue
+FROM 
+    order_line
+INNER JOIN item 
+    ON ol_i_id = i_id
+WHERE 
+    i_brand LIKE 'Brand#41%';
+////
+-- Q15
+WITH revenue AS (
+    SELECT 
+        s_suppkey AS supplier_no, SUM(ol_amount) AS total_revenue
+    FROM 
+        order_line
+    INNER JOIN stock 
+        ON ol_i_id = s_i_id AND ol_supply_w_id = s_w_id
+    INNER JOIN item 
+        ON s_i_id = i_id
+    WHERE 
+        i_brand LIKE 'Brand#34%'
+    GROUP BY 
+        s_suppkey
+)
+
+SELECT 
+    su_suppkey, su_name, su_address, su_phone, total_revenue
+FROM 
+    supplier
+INNER JOIN revenue 
+    ON su_suppkey = revenue.supplier_no
+WHERE 
+    total_revenue = (
+        SELECT 
+            MAX(total_revenue) 
+        FROM 
+            revenue
+    )
+ORDER BY 
+    su_suppkey;
+////
+-- Q16
+SELECT 
+    i_name, i_brand, i_price, COUNT(DISTINCT s_suppkey) supplier_cnt
+FROM item
+INNER JOIN stock
+    ON i_id = s_i_id
+INNER JOIN supplier
+    ON su_suppkey = s_suppkey
+WHERE 
+    i_brand LIKE 'Brand#31%'
+    AND su_comment NOT LIKE '%bad%'
+GROUP BY 
+    i_name, i_brand, i_price
+ORDER BY 
+    supplier_cnt DESC;
+////
+-- Q18
+SELECT 
+    c_last, c_id, o_id, o_entry_d, o_ol_cnt, SUM(ol_amount) AS total_amount
+FROM 
+    customer
+INNER JOIN orders 
+    ON c_id = o_c_id AND c_w_id = o_w_id AND c_d_id = o_d_id
+INNER JOIN order_line 
+    ON ol_w_id = o_w_id AND ol_d_id = o_d_id AND ol_o_id = o_id
+INNER JOIN nation 
+    ON c_nationkey = n_nationkey
+WHERE 
+    n_name LIKE 'Canada%'
+GROUP BY 
+    o_id, o_w_id, o_d_id, c_id, c_last, o_entry_d, o_ol_cnt
+HAVING 
+    SUM(ol_amount) > 200
+ORDER BY 
+    total_amount DESC, o_entry_d;

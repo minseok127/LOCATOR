@@ -1,0 +1,8 @@
+CH_OLAP/OLAP_results/*
+CH_OLAP/figure_7_*.eps
+
+CH_OLTP/OLTP_results/*
+CH_OLTP/figure_10.eps
+
+CH_HTAP/HTAP_results/*
+CH_HTAP/figure_11_*.eps

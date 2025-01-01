@@ -1,0 +1,200 @@
+set term epscairo enhanced size 8in, 4.3in background rgb 'white'
+set output "operation_performance.eps"
+
+set multiplot
+
+set tmargin at screen 1. - 0.16
+set bmargin at screen 1. - 0.81
+
+GRAPH_WIDTH = 0.28
+GRAPH_HORIZONTAL_GAP = 0.01
+GRPAH_HEIGHT = 0.28
+
+CLICKHOUSE_COLOR="#FFB900"
+LASER_COLOR="#8c564b"
+POSTGRES_COLOR="#37517F"
+LOCATOR_COLOR="#58D68D"
+
+# Point size
+POSTGRES_PS=1.9
+LASER_PS=1.8
+LOCATOR_PS=1.6
+CLICKHOUSE_PS=1.6
+
+set style line 1 lt 2 lc rgb "black" lw 6 dt 3 
+
+# Draw a line
+set arrow from screen 0.092 + GRAPH_WIDTH + GRAPH_HORIZONTAL_GAP / 3, 0.06 to screen 0.092 + GRAPH_WIDTH + GRAPH_HORIZONTAL_GAP / 3, 0.92 nohead linestyle 1
+set arrow from screen 0.092 + 2*GRAPH_WIDTH + GRAPH_HORIZONTAL_GAP * 4/3 + 0.05, 0.06 to screen 0.092 + 2*GRAPH_WIDTH + GRAPH_HORIZONTAL_GAP * 4/3 + 0.05, 0.92 nohead linestyle 1
+
+set ylabel "Query Latency (ms, Avg)" font "Calibri-Bold, 22" offset -7, 0
+set yrange[0:1]
+set lmargin at screen 0.095
+set rmargin at screen 0.2
+set tmargin at screen 0.4
+set bmargin at screen 0.6
+set ytics 100, 100, 100
+set xtics 100, 100, 100
+unset border
+set xtics scale 0
+set ytics scale 0
+plot NaN notitle
+unset arrow
+unset ylabel
+
+set object 1 rect from screen 0.092 + GRAPH_WIDTH + GRAPH_HORIZONTAL_GAP / 3, 0.06 to screen 0.092 + 2*GRAPH_WIDTH + GRAPH_HORIZONTAL_GAP+0.004 + 0.05, 0.925 behind fs solid 0.2 noborder fc rgb "grey"
+plot NaN notitle
+unset object 1
+
+
+# with insert workers
+reset
+set logscale y 10
+set format y '10^{%L}'
+
+# plot 1: point_lookup
+set border
+set lmargin at screen 0.09
+set rmargin at screen 0.09 + GRAPH_WIDTH
+set tmargin at screen 1. - 0.14
+set bmargin at screen 1. - 0.14 - GRPAH_HEIGHT
+
+set xrange[-0.55:3.55]
+set yrange[0.01:10000]
+
+BOX_WIDTH = 0.21
+set boxwidth BOX_WIDTH
+
+set linetype 10 lc rgb "black" lw 2
+set style fill solid border lt 10
+
+#set ylabel "(x1000)" font "calibri, 20" offset -1, 0
+set xlabel "Insert Worker #" font "Calibri-Bold, 20" offset 0, 0
+set xtics nomirror center font "calibri, 20" scale 0.8 offset 0.5, 0
+set ytics ("10^{-1}" 0.1, "10^{0}" 1, "10^{1}" 10, "10^{2}" 100, "10^{3}" 1000) font "calibri, 21" scale 0.0 offset 0.7, 0
+set grid y lw 3
+set title "Point Lookup" font "Calibri Bold, 21.5" offset 0, -1.1
+set obj 1 rect from graph 0,0 to graph 1,1 fc rgb "white" behind
+
+plot "./result/insert_for_measuring_point_lookup/clickhouse.dat" using ($0-BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb CLICKHOUSE_COLOR notitle, \
+     "./result/insert_for_measuring_point_lookup/laser.dat" using ($0-BOX_WIDTH/2):($2 * 1000.0) with boxes lw 2 lc rgb LASER_COLOR notitle, \
+ 	 "./result/insert_for_measuring_point_lookup/postgres.dat" using ($0+BOX_WIDTH/2):($2 * 1000.0):xtic(sprintf("%d   ", $1)) with boxes lw 2 lc rgb POSTGRES_COLOR notitle, \
+     "./result/insert_for_measuring_point_lookup/locator.dat" using ($0+BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb LOCATOR_COLOR notitle, \
+
+unset ylabel
+unset title
+
+
+# plot 2: range_scan
+set lmargin at screen 0.09 + GRAPH_WIDTH + GRAPH_HORIZONTAL_GAP + 0.05
+set rmargin at screen 0.09 + 2*GRAPH_WIDTH + GRAPH_HORIZONTAL_GAP + 0.05
+#set yrange[0.01:10000]
+set yrange[0.1:1000000]
+set ytics ("10^{0}" 1, "10^{1}" 10, "10^{2}" 100, "10^{3}" 1000, "10^{4}" 10000, "10^{5}" 100000) font "calibri, 21" scale 0.0 offset 0.7, 0
+set title "Range Scan" font "Calibri Bold, 21.5" offset 0, -1.1
+
+plot "./result/insert_for_measuring_range_scan/clickhouse.dat" using ($0-BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb CLICKHOUSE_COLOR notitle, \
+     "./result/insert_for_measuring_range_scan/laser.dat" using ($0-BOX_WIDTH/2):($2 * 1000.0) with boxes lw 2 lc rgb LASER_COLOR notitle, \
+ 	 "./result/insert_for_measuring_range_scan/postgres.dat" using ($0+BOX_WIDTH/2):($2 * 1000.0):xtic(sprintf("%d   ", $1)) with boxes lw 2 lc rgb POSTGRES_COLOR notitle, \
+     "./result/insert_for_measuring_range_scan/locator.dat" using ($0+BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb LOCATOR_COLOR notitle, \
+
+unset ylabel
+
+# plot 3: join
+set lmargin at screen 0.09 + 2*GRAPH_WIDTH + 2*GRAPH_HORIZONTAL_GAP + 0.05
+set rmargin at screen 0.09 + 3*GRAPH_WIDTH + 2*GRAPH_HORIZONTAL_GAP + 0.05
+set ytics ("" 10, "" 100, "" 1000, "" 10000, "" 100000) font "calibri, 20" scale 0.0 offset 0.7, 0
+set title "Join" font "Calibri Bold, 21.5" offset 0, -1.1
+
+plot "./result/insert_for_measuring_join/clickhouse.dat" using ($0-BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb CLICKHOUSE_COLOR notitle, \
+     "./result/insert_for_measuring_join/laser.dat" using ($0-BOX_WIDTH/2):($2 * 1000.0) with boxes lw 2 lc rgb LASER_COLOR notitle, \
+ 	 "./result/insert_for_measuring_join/postgres.dat" using ($0+BOX_WIDTH/2):($2 * 1000.0):xtic(sprintf("%d   ", $1)) with boxes lw 2 lc rgb POSTGRES_COLOR notitle, \
+     "./result/insert_for_measuring_join/locator.dat" using ($0+BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb LOCATOR_COLOR notitle, \
+
+
+
+unset ylabel
+unset title
+
+
+# with update workers
+# plot 4: point_lookup
+set lmargin at screen 0.09
+set rmargin at screen 0.09 + GRAPH_WIDTH
+set tmargin at screen 1. - 0.55
+set bmargin at screen 1. - 0.55 - GRPAH_HEIGHT
+set yrange[0.01:10000]
+set ytics ("10^{-1}" 0.1, "10^{0}" 1, "10^{1}" 10, "10^{2}" 100, "10^{3}" 1000) font "calibri, 21" scale 0.0 offset 0.7, 0
+set xlabel "Update Worker #" font "Calibri-Bold, 20" offset -0, -0
+
+plot "./result/update_for_measuring_point_lookup/clickhouse.dat" using ($0-BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb CLICKHOUSE_COLOR notitle, \
+     "./result/update_for_measuring_point_lookup/laser.dat" using ($0-BOX_WIDTH/2):($2 * 1000.0) with boxes lw 2 lc rgb LASER_COLOR notitle, \
+ 	 "./result/update_for_measuring_point_lookup/postgres.dat" using ($0+BOX_WIDTH/2):($2 * 1000.0):xtic(sprintf("%d   ", $1)) with boxes lw 2 lc rgb POSTGRES_COLOR notitle, \
+     "./result/update_for_measuring_point_lookup/locator.dat" using ($0+BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb LOCATOR_COLOR notitle, \
+
+
+
+# plot 5: range_scan
+set lmargin at screen 0.09 + GRAPH_WIDTH + GRAPH_HORIZONTAL_GAP + 0.05
+set rmargin at screen 0.09 + 2*GRAPH_WIDTH + GRAPH_HORIZONTAL_GAP + 0.05
+set yrange[0.1:1000000]
+set ytics ("10^{0}" 1, "10^{1}" 10, "10^{2}" 100, "10^{3}" 1000, "10^{4}" 10000, "10^{5}" 100000) font "calibri, 21" scale 0.0 offset 0.7, 0
+
+plot "./result/update_for_measuring_range_scan/clickhouse.dat" using ($0-BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb CLICKHOUSE_COLOR notitle, \
+     "./result/update_for_measuring_range_scan/laser.dat" using ($0-BOX_WIDTH/2):($2 * 1000.0) with boxes lw 2 lc rgb LASER_COLOR notitle, \
+ 	 "./result/update_for_measuring_range_scan/postgres.dat" using ($0+BOX_WIDTH/2):($2 * 1000.0):xtic(sprintf("%d   ", $1)) with boxes lw 2 lc rgb POSTGRES_COLOR notitle, \
+     "./result/update_for_measuring_range_scan/locator.dat" using ($0+BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb LOCATOR_COLOR notitle, \
+
+
+
+
+
+unset ylabel
+
+# plot 6: join
+set lmargin at screen 0.09 + 2*GRAPH_WIDTH + 2*GRAPH_HORIZONTAL_GAP + 0.05
+set rmargin at screen 0.09 + 3*GRAPH_WIDTH + 2*GRAPH_HORIZONTAL_GAP + 0.05
+set ytics ("" 1, "" 10, "" 100, "" 1000, "" 10000, "" 100000) font "calibri, 20" scale 0.0 offset 0.7, 0
+
+plot "./result/update_for_measuring_join/clickhouse.dat" using ($0-BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb CLICKHOUSE_COLOR notitle, \
+     "./result/update_for_measuring_join/laser.dat" using ($0-BOX_WIDTH/2):($2 * 1000.0) with boxes lw 2 lc rgb LASER_COLOR notitle, \
+ 	 "./result/update_for_measuring_join/postgres.dat" using ($0+BOX_WIDTH/2):($2 * 1000.0):xtic(sprintf("%d   ", $1)) with boxes lw 2 lc rgb POSTGRES_COLOR notitle, \
+     "<(awk '$1 == 0 || $1 == 4 || $1 == 16 || $1 == 64' ./result/update_for_measuring_join/locator.dat)" using ($0+BOX_WIDTH*1.5):($2 * 1000.0) with boxes lw 2 lc rgb LOCATOR_COLOR notitle, \
+
+
+
+unset logscale y
+
+# draw key
+set lmargin at screen 0.1
+set rmargin at screen 0.95
+set tmargin at screen 0.5
+set bmargin at screen 0.0
+
+unset object
+unset xlabel
+unset ylabel
+unset xtic
+unset ytic
+unset border
+set xrange[0.1:100]
+set yrange[0:6]
+
+set key reverse Left outside horizontal font ", 20" samplen 1.5 width 5
+
+set key at screen 0.28, 1
+plot "" using (0):(0) with boxes lw 2 lc rgb CLICKHOUSE_COLOR title "ClickHouse"
+
+set key at screen 0.67, 1
+plot "" using (0):(0) with boxes lw 2 lc rgb LASER_COLOR title "PostgreSQL(PG) w/ LASER"
+
+set key at screen 0.845, 1
+plot "" using (0):(0) with boxes lw 2 lc rgb POSTGRES_COLOR title "Vanilla PG"
+
+set key at screen 1.07, 1
+plot "" using (0):(0) with boxes lw 2 lc rgb LOCATOR_COLOR title "PG w/ LOCATOR"
+unset key
+
+set object 1 rect at screen 0.01, 0.00 size screen 0.81, 0.11 fc rgb "#f2f2f2" fs solid noborder
+set label 5 "{/Times-New-Roman-Bold *Insert TPS = 100, Update TPS = 1000}" at screen 0.005, 0.03 font ", 21"
+plot NaN notitle
